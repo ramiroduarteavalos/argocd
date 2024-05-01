@@ -9,7 +9,7 @@ spec:
         repoURL: https://github.com/ramiroduarteavalos/argocd.git
         revision: HEAD
         files:
-          - path: "argocd/dummy/config/prod/*"
+          - path: "argocd/dummy/config/dev-qa/*"
   template:
     metadata:
       name: "{{project}}-{{environment}}"

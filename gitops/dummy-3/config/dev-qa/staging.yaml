@@ -1,0 +1,5 @@
+{
+  "project": "dummy",
+  "environment": "staging",
+  "cluster": "in-cluster"
+}

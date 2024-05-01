@@ -1,0 +1,5 @@
+{
+  "project": "dummy",
+  "environment": "qa",
+  "cluster": "in-cluster"
+}
