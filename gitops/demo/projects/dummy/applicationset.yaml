@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: dummy
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/ramiroduarteavalos/argocd-gitops.git
+        revision: HEAD
+        files:
+          - path: "argocd-gitops/demo/projects/dummy/config/*"
+  template:
+    metadata:
+      name: "{{product}}-{{project}}-{{environment}}"
+      labels:
+        harness.io/envRef: "{{environment}}"
+        harness.io/serviceRef: "{{project}}"
+    spec:
+      project: 96a7dae5
+      source:
+        path: "argocd-gitops/demo/projects/dummy"
+        repoURL: https://github.com/ramiroduarteavalos/argocd-gitops.git
+        targetRevision: main
+        helm:
+          releaseName: "{{project}}"
+          valueFiles:
+            - "argocd-gitops/demo/projects/dummy/values.{{environment}}.yaml"
+      destination:
+        name: "{{cluster}}"
+        namespace: "{{product}}"
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - PruneLast=true
+          - CreateNamespace=true
+          - ApplyOutOfSyncOnly=true

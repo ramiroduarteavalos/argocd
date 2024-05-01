@@ -1,0 +1,110 @@
+{{- $chartName := include "sarlanga.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sarlanga.fullname" . }}
+  labels:
+    {{- include "sarlanga.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "sarlanga.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "sarlanga.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if eq .Values.hostAliases.enabled true }}
+      hostAliases:
+      {{- range $key, $val := .Values.hostAliases.list }}
+      - ip: {{ $val | quote }}
+        hostnames:
+        - {{ $key | quote }}
+      {{- end}}
+      {{- end}}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "sarlanga.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.secretsLoader }}
+      initContainers:
+        {{- toYaml .Values.secretsLoader | nindent 8 }}
+          name: secrets-loader
+          image: us.gcr.io/cencosudx/sarlanga/init-secrets-generator:1.0.1
+          imagePullPolicy: IfNotPresent
+          resources: {}
+          volumeMounts:
+            - mountPath: /certs
+              name: service-account
+            - mountPath: /secrets
+              name: secrets
+      {{- end }}
+      containers:
+        - name: {{ $chartName }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}/{{ .Values.product }}/{{ .Values.name }}:{{ .Values.imageTag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.container.port.http }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.liveness.path }}
+              port: {{ .Values.liveness.port }}
+            initialDelaySeconds: {{ .Values.liveness.delay }}
+            timeoutSeconds: {{ .Values.liveness.timeout }}
+            periodSeconds: {{ .Values.liveness.period }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readiness.path }}
+              port: {{ .Values.readiness.port }}
+            initialDelaySeconds: {{ .Values.readiness.delay }}
+            timeoutSeconds: {{ .Values.readiness.timeout }}
+            periodSeconds: {{ .Values.readiness.period }}
+          envFrom:
+          - configMapRef:
+              name: {{ $chartName }}
+          - secretRef:
+              name: {{ $chartName }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.secretsLoader }}
+          volumeMounts:
+            - mountPath: /certs
+              name: service-account
+            - mountPath: /secrets
+              name: secrets        
+          {{- end}}
+      volumes:
+      {{- if .Values.secretsLoader }}
+      - name: secrets
+        emptyDir:
+          sizeLimit: 500Mi
+      {{- end }}
+      - configMap:
+          name: service-account-config-map
+        name: service-account
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
