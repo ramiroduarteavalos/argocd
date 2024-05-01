@@ -1,0 +1,6 @@
+{
+  "product": "demo",
+  "project": "dummy",
+  "environment": "staging",
+  "cluster": "staging"
+}
